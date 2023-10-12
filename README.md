@@ -61,8 +61,8 @@ nvim "discord://id=server-id-here/id=channel-id-here"
 # Goals
 
 - [ ] Proper documentation
-- [ ] Server selection screen
-- [ ] Channel selection screen
+- [x] Server selection screen
+- [x] Channel selection screen
 - [ ] Sending dms / ability to be in a dm channel
 - [ ] Add highlights for output text
 - [ ] Support a plain discord:// uri
