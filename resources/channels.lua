@@ -68,8 +68,9 @@ end
 ---@param channel_id string | discord.Snowflake
 ---@return discord.Channel | nil
 _M.get_channel_in_server_by_id = function(server_id, channel_id)
+    channel_id = tostring(channel_id)
     return _M.get_channels_in_server_with_filter(server_id, function(c)
-        return c.id == channel_id
+        return tostring(c.id) == channel_id
     end)[1]
 end
 
