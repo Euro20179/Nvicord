@@ -58,6 +58,17 @@ nvim "discord://id=server-id-here/id=channel-id-here"
     - It is also possible to open the buffer manually with the `:buffer` command, however `open_input_box` creates a split,
     - and will probably create a nicer input box in the future
 
+- The `/output` buffer is for displaying messages sent to the channel
+- The `/input` buffer is for sending messages to a channel
+    - To use the `/input` buffer, type a message, then in insert mode press `<C-s>` or in normal mode press `<leader>s`
+        - currently this cannot be changed
+- A message can also be sent with the following code
+
+```lua
+require"discord".send_message({content = "Text to send"}, "channel_id")
+```
+The first argument is a message object documented [here](https://discord.com/developers/docs/resources/channel#message-object), the second argument is the id of the channel to send the message to
+
 # Goals
 
 - [x] Ability to login with username/password
