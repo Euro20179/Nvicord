@@ -23,6 +23,7 @@ local event_handlers = {
         end
         local msgObj = MESSAGE_CREATE.d
         local guild_id = msgObj.guild_id
+        local user_id = msgObj.author.id
         if guild_id == nil and msgObj.author.id ~= config.user_id then
             _M.dm_notify(msgObj)
             return
@@ -39,7 +40,8 @@ local event_handlers = {
         end
 
         local contentLines = vim.split(msgObj.content, "\n")
-        local lines = { "@" .. displayName .. ": " .. contentLines[1] }
+        local name_part = "@" .. displayName
+        local lines = { name_part .. ": " .. contentLines[1] }
         for i = 2, #contentLines do
             lines[i] = contentLines[i]
         end
@@ -48,6 +50,9 @@ local event_handlers = {
 
         if buffers.output_buf ~= nil then
             vim.api.nvim_buf_set_lines(buffers.output_buf, -1, -1, false, lines)
+            local line_count = vim.api.nvim_buf_line_count(buffers.output_buf)
+
+            vim.api.nvim_buf_add_highlight(buffers.output_buf, data.discord_hl_ns, "Error", line_count - 1, 0, #name_part)
             local win_buf = vim.api.nvim_win_get_buf(0)
             if win_buf == buffers.output_buf then
                 vim.api.nvim_win_set_cursor(0, { vim.api.nvim_buf_line_count(buffers.output_buf), 0 })
@@ -126,6 +131,10 @@ _M.setup = function(opts)
     end
     config.token = opts.token
     config.user_id = opts.user_id
+
+    local discord_hl_ns = vim.api.nvim_create_namespace("discord")
+
+    data.discord_hl_ns = discord_hl_ns
 
     vim.api.nvim_create_autocmd("BufEnter", {
         pattern = "discord://*",

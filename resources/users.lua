@@ -17,9 +17,10 @@
 ---@field avatar_decoration string?
 
 local config = require"discord.config"
-local cache = require"discord.cache"
 
 local _M = {}
+
+local cache = {}
 
 ---@param user_id string
 ---@return discord.User?
