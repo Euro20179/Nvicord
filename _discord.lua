@@ -94,12 +94,19 @@ _M.handle_discord_event = function(event)
     end
 end
 
-_M.goto_channel = function()
-    servers.select_server(function(server)
-        channels.select_channel(server.id, function(channel)
-            _M.open_uri("discord://id=" .. server.id .. "/id=" .. channel.id)
+---@param server_id string | discord.Snowflake | nil
+_M.open_channel = function(server_id)
+    if server_id then
+        channels.select_channel(server_id, function(channel)
+            _M.open_uri("discord://id=" .. server_id .. "/id=" .. channel.id)
         end)
-    end)
+    else
+        servers.select_server(function(server)
+            channels.select_channel(server.id, function(channel)
+                _M.open_uri("discord://id=" .. server.id .. "/id=" .. channel.id)
+            end)
+        end)
+    end
 end
 
 _M.clear_buf = function(buf)
