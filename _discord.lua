@@ -121,12 +121,16 @@ _M.setup = function(opts)
     config.token = opts.token
     config.user_id = opts.user_id
 
-    vim.filetype.add({
-        pattern = {
-            ["discord://.*"] = function(path, bufnr, ...)
-                _M.start(path)
+    vim.api.nvim_create_autocmd("BufEnter", {
+        pattern = "discord://*",
+        callback = function()
+            local name = vim.api.nvim_buf_get_name(0)
+            if not data.started then
+                _M.start(name)
+            else
+                _M.open_uri(name)
             end
-        }
+        end
     })
 end
 
@@ -306,6 +310,9 @@ end
 ---@param uri string
 ---@param replaceBufs {output: integer, input: integer}?
 _M.open_uri = function(uri, replaceBufs)
+    if uri == "discord://" then
+        return
+    end
     local server, channel, buf_type = _M.parse_discord_uri(uri)
 
     if not channel then
