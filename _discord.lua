@@ -298,10 +298,10 @@ _M.open_input_box = function()
         error("Not currently in an output buffer")
     end
 
-    local input_buf = _M.get_channel_input_buffer(tostring(server.id), tostring(channel.id))
+    local input_buf = _M.get_channel_input_buffer(server.id, channel.id)
 
     if not input_buf then
-        input_buf = create_input_buf(server.name, channel.name, tostring(channel.id))
+        input_buf = create_input_buf(server.name, channel.name, channel.id)
     end
 
     vim.cmd.split()
