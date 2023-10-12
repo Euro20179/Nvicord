@@ -4,10 +4,7 @@ import time
 import threading
 import neovim
 import sys
-from pynvim.api.nvim import Buffer
-import requests
 import os
-import dataclasses
 from websockets.exceptions import ConnectionClosedError
 from websockets.sync.client import connect
 from websockets.sync.connection import Connection
