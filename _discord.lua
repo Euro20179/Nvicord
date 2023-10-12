@@ -114,10 +114,6 @@ _M.clear_buf = function(buf)
 end
 
 _M.setup = function(opts)
-    if not opts.token then
-        error("No user token given")
-        return
-    end
     if not opts.user_id then
         error("No user id given")
         return
@@ -333,14 +329,43 @@ end
 
 ---@param uri string? should be a discord:// uri described at the top of _discord.lua
 _M.start = function(uri)
-    _M.open_uri(uri or "discord://", {
-        output = 0,
-        input = 0
-    })
     if not data.started then
+        if not config.token then
+            vim.ui.input({
+                prompt = "Email: "
+            }, function(email)
+                local password = vim.fn.inputsecret("Password: ")
+
+                local login_resp = vim.system({
+                    "curl",
+                    "-H", "Accept: */*",
+                    '-H', "Accept-Language: en-US,en;q=0.5",
+                    "-H", "Connection: keep-alive",
+                    "-H", "Content-Type: application/json",
+                    "-X", "POST",
+                    "-d", vim.json.encode({
+                        login = email,
+                        password = password,
+                        undelete = false --wtf is this
+                    }),
+                    "https://discord.com/api/v9/auth/login"
+                }):wait()
+                if login_resp.code ~= 0 then
+                    error("Failed to login, invalid username or password")
+                end
+                local response = vim.json.decode(login_resp.stdout)
+                config.token = response.token
+                _M.open_uri(uri or "discord://", {
+                    output = 0,
+                    input = 0
+                })
+            end)
+        end
         vim.api.nvim_create_user_command("DiscordSend", discordSend, { nargs = "+" })
         vim.system({ "/home/euro/.config/nvim/lua/discord/main.py", vim.v.servername })
         data.started = true
+    else
+        error("Discord has already started")
     end
 end
 

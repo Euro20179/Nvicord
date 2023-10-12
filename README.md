@@ -36,7 +36,7 @@ After cloning add the following to your `init.lua`
 ```lua
 local discord = require"discord"
 discord.setup{
-    token = "YOUR DISCORD TOKEN HERE"
+    token = "YOUR DISCORD TOKEN HERE" --optional, if not provided, a prompt to login will be given
     user_id = "YOUR USER ID" --obtained by right clicking on your user in discord and clicking "copy user id", developer mode needs to be enabled for this
 }
 ```
@@ -60,6 +60,7 @@ nvim "discord://id=server-id-here/id=channel-id-here"
 
 # Goals
 
+- [x] Ability to login with username/password
 - [ ] Proper documentation
 - [x] Server selection screen
 - [x] Channel selection screen

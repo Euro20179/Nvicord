@@ -4,7 +4,6 @@ import time
 import threading
 import neovim
 import sys
-import os
 from websockets.exceptions import ConnectionClosedError
 from websockets.sync.client import connect
 from websockets.sync.connection import Connection
@@ -15,9 +14,6 @@ from websockets.sync.connection import Connection
 #there shouldn't be any logic here
 
 s = None
-
-with open(f'{os.environ["HOME"]}/Documents/APIKeys/discord', "r") as f:
-    token = f.read().strip()
 
 def mantainHeartbeat(ws: Connection, interval: int):
     while True:
@@ -33,11 +29,13 @@ def mantainHeartbeat(ws: Connection, interval: int):
 def notify_test(nvim: neovim.Nvim):
     nvim.command("lua vim.notify('hi')")
 
-if len(sys.argv) < 2:
-    print("Must provide a neovim sever and socket type")
+if len(sys.argv) < 3:
+    sys.stderr.write("Must provide a neovim sever and discord token\nmain.py <neovim-server> <discord-token>")
     exit(1)
 
 ws = None
+token = sys.argv[2]
+
 nvim = neovim.attach("socket", path=sys.argv[1])
 
 
