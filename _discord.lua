@@ -62,7 +62,7 @@ local function discordSend(command_data)
     _M.send_message({ content = content }, channel_id)
 end
 
----@param resources {id: string | discord.Snowflake, name: string}[]
+---@param resources {id: string, name: string}[]
 ---@param on_select fun(selection: {id: string, name: string}): any
 ---This is a function that generically allows the user to select from a list of resources
 ---a "resource" is any object that has at least an id, and name field
@@ -94,7 +94,7 @@ _M.handle_discord_event = function(event)
     end
 end
 
----@param server_id string | discord.Snowflake | nil
+---@param server_id string | nil
 _M.open_channel = function(server_id)
     if server_id then
         channels.select_channel(server_id, function(channel)
@@ -193,7 +193,7 @@ end
 
 ---@param server_name string
 ---@param channel_name string
----@param channel_id string | discord.Snowflake
+---@param channel_id string
 ---@param replaceBuf integer?
 ---@return integer | buffer
 local function create_input_buf(server_name, channel_name, channel_id, replaceBuf)
@@ -226,8 +226,8 @@ local function create_output_buf(server_name, channel_name, replaceBuf)
         "discord://" .. server_name .. "/" .. channel_name .. "/output")
 end
 
----@param server_id string | discord.Snowflake
----@param channel_id string | discord.Snowflake
+---@param server_id string
+---@param channel_id string
 ---@param buffer_type "output" | "input"
 ---@return integer | nil
 local function get_channel_buffer_of_type(server_id, channel_id, buffer_type)
@@ -243,22 +243,22 @@ local function get_channel_buffer_of_type(server_id, channel_id, buffer_type)
     return nil
 end
 
----@param server_id string | discord.Snowflake
----@param channel_id string | discord.Snowflake
+---@param server_id string
+---@param channel_id string
 ---@return integer | nil
 _M.get_channel_output_buffer = function(server_id, channel_id)
     return get_channel_buffer_of_type(server_id, channel_id, "output")
 end
 
----@param server_id string | discord.Snowflake
----@param channel_id string | discord.Snowflake
+---@param server_id string
+---@param channel_id string
 ---@return integer | nil
 _M.get_channel_input_buffer = function(server_id, channel_id)
     return get_channel_buffer_of_type(server_id, channel_id, "input")
 end
 
----@param server_id string | discord.Snowflake
----@param channel_id string | discord.Snowflake
+---@param server_id string
+---@param channel_id string
 ---@return {input_buf: integer | nil, output_buf: integer | nil}
 _M.get_channel_buffers = function(server_id, channel_id)
     local channel = channels.get_channel_in_server_by_id(server_id, channel_id)

@@ -45,7 +45,7 @@ local config = require"discord.config"
 
 local _M = {}
 
----@param server_id string | discord.Snowflake
+---@param server_id string
 ---@param filter fun(channel: discord.Channel): boolean
 ---@return discord.Channel[]
 _M.get_channels_in_server_with_filter = function(server_id, filter)
@@ -64,8 +64,8 @@ _M.get_channels_in_server_with_filter = function(server_id, filter)
     return valid_channels
 end
 
----@param server_id string | discord.Snowflake
----@param channel_id string | discord.Snowflake
+---@param server_id string
+---@param channel_id string
 ---@return discord.Channel | nil
 _M.get_channel_in_server_by_id = function(server_id, channel_id)
     channel_id = tostring(channel_id)
@@ -74,6 +74,7 @@ _M.get_channel_in_server_by_id = function(server_id, channel_id)
     end)[1]
 end
 
+---@param server_id string
 ---@return discord.Channel[]?
 _M.get_channels_in_server = function(server_id)
     local server_cache = cache[server_id]
@@ -93,7 +94,7 @@ _M.get_channels_in_server = function(server_id)
 end
 
 
----@param server_id string | discord.Snowflake
+---@param server_id string
 ---@param on_select fun(selection: {id: string, name: string}): any
 _M.select_channel = function(server_id, on_select)
     local dis = require"discord"

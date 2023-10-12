@@ -78,10 +78,9 @@ _M.get_servers_with_filter = function(filter)
     return valid_servers
 end
 
----@param id string | discord.Snowflake
+---@param id string
 ---@return discord.Server?
 _M.get_server_by_id = function(id)
-    id = tostring(id)
     return _M.get_servers_with_filter(function(s)
         return s.id == id
     end)[1]
