@@ -2,7 +2,7 @@ local cache = require"discord.cache"
 local config = require"discord.config"
 
 ---@class discord.Server
----@field id string
+---@field id discord.Snowflake
 ---@field name string
 ---@field icon string?
 ---@field icon_hash string?
@@ -78,11 +78,12 @@ _M.get_servers_with_filter = function(filter)
     return valid_servers
 end
 
----@param id string
+---@param id string | discord.Snowflake
 ---@return discord.Server?
 _M.get_server_by_id = function(id)
+    id = tostring(id)
     return _M.get_servers_with_filter(function(s)
-        return s.id == id
+        return tostring(s.id) == id
     end)[1]
 end
 

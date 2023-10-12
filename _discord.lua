@@ -90,7 +90,8 @@ _M.handle_discord_event = function(event)
     if event_handlers[event.t] then
         event_handlers[event.t](event)
     else
-        vim.notify(tostring(event.t) .. " Has not been implemented", 1, {})
+        -- vim.system({"notify-send", tostring(event.t)})
+        -- vim.notify(tostring(event.t) .. " Has not been implemented")
     end
 end
 
@@ -191,9 +192,9 @@ _M.parse_discord_uri = function(uri)
     return server, channel, type
 end
 
----@param server_name string
+---@param server_name string | discord.Snowflake
 ---@param channel_name string
----@param channel_id string
+---@param channel_id string | discord.Snowflake
 ---@param replaceBuf integer?
 ---@return integer | buffer
 local function create_input_buf(server_name, channel_name, channel_id, replaceBuf)
@@ -224,10 +225,11 @@ local function create_output_buf(server_name, channel_name, replaceBuf)
 
     vim.api.nvim_buf_set_name(output_buf,
         "discord://" .. server_name .. "/" .. channel_name .. "/output")
+    return output_buf
 end
 
----@param server_id string
----@param channel_id string
+---@param server_id string | discord.Snowflake
+---@param channel_id string | discord.Snowflake
 ---@param buffer_type "output" | "input"
 ---@return integer | nil
 local function get_channel_buffer_of_type(server_id, channel_id, buffer_type)
@@ -243,22 +245,22 @@ local function get_channel_buffer_of_type(server_id, channel_id, buffer_type)
     return nil
 end
 
----@param server_id string
----@param channel_id string
+---@param server_id string | discord.Snowflake
+---@param channel_id string | discord.Snowflake
 ---@return integer | nil
 _M.get_channel_output_buffer = function(server_id, channel_id)
     return get_channel_buffer_of_type(server_id, channel_id, "output")
 end
 
----@param server_id string
----@param channel_id string
+---@param server_id string | discord.Snowflake
+---@param channel_id string | discord.Snowflake
 ---@return integer | nil
 _M.get_channel_input_buffer = function(server_id, channel_id)
     return get_channel_buffer_of_type(server_id, channel_id, "input")
 end
 
----@param server_id string
----@param channel_id string
+---@param server_id string | discord.Snowflake
+---@param channel_id string | discord.Snowflake
 ---@return {input_buf: integer | nil, output_buf: integer | nil}
 _M.get_channel_buffers = function(server_id, channel_id)
     local channel = channels.get_channel_in_server_by_id(server_id, channel_id)
@@ -296,11 +298,10 @@ _M.open_input_box = function()
         error("Not currently in an output buffer")
     end
 
-    local input_buf = _M.get_channel_input_buffer(server.id, channel.id)
+    local input_buf = _M.get_channel_input_buffer(tostring(server.id), tostring(channel.id))
 
     if not input_buf then
-        ---@diagnostic disable-next-line
-        input_buf = create_input_buf(server.name, channel.name, channel.id)
+        input_buf = create_input_buf(server.name, channel.name, tostring(channel.id))
     end
 
     vim.cmd.split()
@@ -323,15 +324,20 @@ _M.open_uri = function(uri, replaceBufs)
     local server_name = server.name
     local channel_name = channel.name or "UNKNOWN"
 
-    if buf_type == "input" or buf_type == nil then
+    local input_buf = _M.get_channel_input_buffer(server.id, tostring(channel.id))
+    local output_buf = _M.get_channel_output_buffer(server.id, tostring(channel.id))
+
+    if not input_buf and (buf_type == "input" or buf_type == nil) then
         --only replace input buf if the uri specfically says that it is loading an input buf
         local irbuf = buf_type == "input" and replaceBufs and replaceBufs.input or nil
-        create_input_buf(server_name, channel_name, channel.id, irbuf)
+        input_buf = create_input_buf(server_name, channel_name, channel.id, irbuf)
     end
-    if buf_type == "output" or buf_type == nil then
+    if not output_buf and (buf_type == "output" or buf_type == nil) then
         local orbuf = replaceBufs and replaceBufs.output or nil
-        create_output_buf(server_name, channel_name, orbuf)
+        output_buf = create_output_buf(server_name, channel_name, orbuf)
     end
+
+    return input_buf, output_buf
 end
 
 ---@return string (the token)
