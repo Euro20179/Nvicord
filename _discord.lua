@@ -365,7 +365,7 @@ _M.start = function(uri)
             input = 0
         })
         vim.api.nvim_create_user_command("DiscordSend", discordSend, { nargs = "+" })
-        vim.system({ "/home/euro/.config/nvim/lua/discord/main.py", vim.v.servername })
+        vim.system({ "/home/euro/.config/nvim/lua/discord/main.py", vim.v.servername, config.token })
         data.started = true
     else
         error("Discord has already started")
