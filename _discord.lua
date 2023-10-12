@@ -72,11 +72,16 @@ _M.select_resource = function(resources, on_select)
     -- it's also a logical seperator value to use
     local items = {}
     for _, resource in pairs(resources) do
+        resource.name = resource.name:gsub("\n", "\\n")
         items[#items + 1] = resource.name .. " \x1e#" .. tostring(resource.id)
     end
+
     vim.ui.select(items, {
         prompt = "Select one"
     }, function(s)
+        if s == nil then
+            return
+        end
         local name_and_id = vim.split(s, " \x1e#")
         on_select({ name = name_and_id[1], id = name_and_id[2] })
     end)
@@ -146,9 +151,18 @@ _M.send_message = function(messageJson, channel_id)
         vim.json.encode(messageJson), "https://discord.com/api/v9/channels/" .. channel_id .. "/messages" })
 end
 
+---@param uri_result {[1]: discord.Server, [2]: discord.Channel, [3]: discord.UriOutputType}
+_M.unpack_uri_result = function(uri_result)
+    return uri_result[1], uri_result[2], uri_result[3]
+end
+
 ---@param uri string
----@return discord.Server, discord.Channel, discord.UriOutputType
+---@return {[1]: discord.Server, [2]: discord.Channel, [3]: discord.UriOutputType} | nil
 _M.parse_discord_uri = function(uri)
+    uri = vim.trim(uri)
+    if uri == "discord://" then
+        return nil
+    end
     local uri_data = vim.split(uri, "/")
     local server_ident = uri_data[3]
     local channel_ident = uri_data[4]
@@ -189,7 +203,7 @@ _M.parse_discord_uri = function(uri)
             return c.name == channel_ident
         end)[1]
     end
-    return server, channel, type
+    return {server, channel, type}
 end
 
 ---@param server_name string | discord.Snowflake
@@ -236,11 +250,16 @@ local function get_channel_buffer_of_type(server_id, channel_id, buffer_type)
     for _, buf in pairs(vim.api.nvim_list_bufs()) do
         local name = vim.api.nvim_buf_get_name(buf)
         if vim.startswith(name, "discord://") then
-            local uri_server, uri_channel, buf_type = _M.parse_discord_uri(name)
+            local result = _M.parse_discord_uri(name)
+            if result == nil then
+                goto continue
+            end
+            local uri_server, uri_channel, buf_type = _M.unpack_uri_result(result)
             if tostring(uri_server.id) == tostring(server_id) and tostring(uri_channel.id) == tostring(channel_id) and buf_type == buffer_type then
                 return buf
             end
         end
+        ::continue::
     end
     return nil
 end
@@ -274,7 +293,11 @@ _M.get_channel_buffers = function(server_id, channel_id)
     for _, buf in pairs(vim.api.nvim_list_bufs()) do
         local name = vim.api.nvim_buf_get_name(buf)
         if vim.startswith(name, "discord://") then
-            local uri_server, uri_channel, buf_type = _M.parse_discord_uri(name)
+            local uri_result = _M.parse_discord_uri(name)
+            if uri_result == nil then
+                goto continue
+            end
+            local uri_server, uri_channel, buf_type = _M.unpack_uri_result(uri_result)
             if tostring(uri_server.id) == tostring(server_id) and tostring(uri_channel.id) == tostring(channel_id) then
                 if buf_type == "output" then
                     resp.output_buf = buf
@@ -283,6 +306,7 @@ _M.get_channel_buffers = function(server_id, channel_id)
                 end
             end
         end
+        ::continue::
     end
     return resp
 end
@@ -293,7 +317,11 @@ _M.open_input_box = function()
     if not vim.startswith(name, "discord://") then
         error("Not currently in a discord:// buffer")
     end
-    local server, channel, buf_type = _M.parse_discord_uri(name)
+    local uri_result = _M.parse_discord_uri(name)
+    if uri_result == nil then
+        error("Not in an output buffer")
+    end
+    local server, channel, buf_type = _M.unpack_uri_result(uri_result)
     if buf_type ~= "output" then
         error("Not currently in an output buffer")
     end
@@ -311,13 +339,15 @@ end
 ---@param uri string
 ---@param replaceBufs {output: integer, input: integer}?
 _M.open_uri = function(uri, replaceBufs)
-    if uri == "discord://" then
+    local uri_result = _M.parse_discord_uri(uri)
+
+    if uri_result == nil then
         return
     end
-    local server, channel, buf_type = _M.parse_discord_uri(uri)
 
-    if not channel then
-        vim.notify("Not connecting to channel")
+    local server, channel, buf_type = _M.unpack_uri_result(uri_result)
+
+    if channel == nil then
         return
     end
 
