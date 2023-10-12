@@ -8,8 +8,8 @@
 
 local config = require "discord.config"
 
-local servers = require "discord.servers"
-local channels = require "discord.channels"
+local servers = require "discord.resources.servers"
+local channels = require "discord.resources.channels"
 
 local _M = {}
 
@@ -62,6 +62,26 @@ local function discordSend(command_data)
     _M.send_message({ content = content }, channel_id)
 end
 
+---@param resources {id: string | discord.Snowflake, name: string}[]
+---@param on_select fun(selection: {id: string, name: string}): any
+---This is a function that generically allows the user to select from a list of resources
+---a "resource" is any object that has at least an id, and name field
+---example use case: selecting from a list of servers
+_M.select_resource = function(resources, on_select)
+    --\x1e is the "record separator" ascii value, it's (almost) garanteed to not show up in a resource name
+    -- it's also a logical seperator value to use
+    local items = {}
+    for _, resource in pairs(resources) do
+        items[#items + 1] = resource.name .. " \x1e#" .. tostring(resource.id)
+    end
+    vim.ui.select(items, {
+        prompt = "Select one"
+    }, function(s)
+        local name_and_id = vim.split(s, " \x1e#")
+        on_select({ name = name_and_id[1], id = name_and_id[2] })
+    end)
+end
+
 _M.dm_notify = function(msg)
     vim.notify("DM @" .. msg.author.username .. ": " .. msg.content)
 end
@@ -72,6 +92,14 @@ _M.handle_discord_event = function(event)
     else
         vim.notify(tostring(event.t) .. " Has not been implemented", 1, {})
     end
+end
+
+_M.goto_channel = function()
+    servers.select_server(function(server)
+        channels.select_channel(server.id, function(channel)
+            _M.open_uri("discord://id=" .. server.id .. "/id=" .. channel.id)
+        end)
+    end)
 end
 
 _M.clear_buf = function(buf)
@@ -285,7 +313,7 @@ _M.open_uri = function(uri, replaceBufs)
     local server_name = server.name
     local channel_name = channel.name or "UNKNOWN"
 
-    if buf_type == "input"  or buf_type == nil then
+    if buf_type == "input" or buf_type == nil then
         --only replace input buf if the uri specfically says that it is loading an input buf
         local irbuf = buf_type == "input" and replaceBufs and replaceBufs.input or nil
         create_input_buf(server_name, channel_name, channel.id, irbuf)
