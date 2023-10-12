@@ -13,8 +13,8 @@ Sending dms is currently not possible, however if you are sent a dm, it will not
 - Python 3.10+
 
 ### Python modules
-[websockets](https://pypi.org/project/websockets/)
-[pynvim](https://pypi.org/project/pynvim/)
+- [websockets](https://pypi.org/project/websockets/)
+- [pynvim](https://pypi.org/project/pynvim/)
 
 No lua modules are required.
 
