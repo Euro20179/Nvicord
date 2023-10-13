@@ -436,11 +436,16 @@ _M.open_uri = function(uri, replaceBufs)
     return input_buf, output_buf
 end
 
----@return string (the token)
-local function login()
+---@return string, string
+_M.prompt_login = function()
     local email = vim.fn.input({ prompt = "Email: " })
     local password = vim.fn.inputsecret("Password: ")
+    return email, password
+end
 
+---@return string (the token)
+local function login()
+    local email, password = _M.prompt_login()
     local login_resp = vim.system({
         "curl",
         "-H", "Accept: */*",
