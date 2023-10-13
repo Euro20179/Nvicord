@@ -39,7 +39,12 @@ local event_handlers = {
 
         local msg_extmark = message_extmarks[msgObj.id]
 
-        vim.api.nvim_buf_del_extmark(out, data.discord_msg_ns, msg_extmark[1])
+        local extmark_pos = vim.api.nvim_buf_get_extmark_by_id(out, data.discord_msg_ns, msg_extmark[1], {})
+
+        vim.api.nvim_buf_set_extmark(out, data.discord_hl_ns, extmark_pos[1], 0, {
+            end_row = extmark_pos[1] + msg_extmark[2],
+            hl_group = "DiscordStrike"
+        })
     end,
     MESSAGE_CREATE = function(MESSAGE_CREATE)
         if MESSAGE_CREATE.t ~= "MESSAGE_CREATE" then
@@ -192,6 +197,8 @@ _M.setup = function(opts)
 
     data.discord_hl_ns = discord_hl_ns
     data.discord_msg_ns = discord_msg_ns
+
+    vim.cmd.highlight("DiscordStrike cterm=strikethrough gui=strikethrough")
 
     vim.api.nvim_create_autocmd("BufEnter", {
         pattern = "discord://*",
