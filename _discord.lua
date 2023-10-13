@@ -110,7 +110,7 @@ local event_handlers = {
             #lines
         }
 
-        vim.api.nvim_buf_add_highlight(buffers.output_buf, data.discord_hl_ns, "Discord" .. color, line_count - 1, 0,
+        vim.api.nvim_buf_add_highlight(buffers.output_buf, data.discord_hl_ns, "Discord" .. color, line_count - #lines, 0,
             #name_part)
 
         local win_buf = vim.api.nvim_win_get_buf(0)
@@ -287,6 +287,10 @@ end
 local function create_input_buf(server_name, channel_name, channel_id, replaceBuf)
     local input_buf = replaceBuf or vim.api.nvim_create_buf(true, false)
 
+    vim.api.nvim_set_option_value("filetype", "markdown", {
+        buf = input_buf
+    })
+
     vim.api.nvim_buf_set_name(input_buf,
         "discord://" .. server_name .. "/" .. channel_name .. "/input")
 
@@ -405,8 +409,18 @@ _M.open_input_box = function()
         input_buf = create_input_buf(server.name, channel.name, channel.id)
     end
 
+    --this split is to make it so that the output win can't scroll below the input float
     vim.cmd.split()
-    vim.api.nvim_win_set_buf(0, input_buf)
+    vim.api.nvim_win_set_height(0, 10)
+
+    vim.api.nvim_open_win(input_buf, true, {
+        relative = "win",
+        row = 0, col = 0,
+        width = vim.api.nvim_win_get_width(0),
+        height = vim.api.nvim_win_get_height(0),
+        style = "minimal",
+        border = "rounded"
+    })
 end
 
 ---@param uri string
