@@ -34,27 +34,10 @@ local event_handlers = {
 
         local color = "DiscordNone"
 
-        local roles = require"discord.resources.roles"
+        local roles = require "discord.resources.roles"
 
         if msgObj.member then
             displayName = msgObj.member.nick
-            if msgObj.member.roles then
-                local topRole = roles.get_role_in_server(guild_id, vim.fn.sort(msgObj.member.roles or {}, function(r1, r2)
-                    local role1 = roles.get_role_in_server(guild_id, r1)
-                    local role2 = roles.get_role_in_server(guild_id, r2)
-                    return role2.position - role1.position
-                end)[1])
-                if topRole then
-                    color = string.format("%.6X", topRole.color)
-                end
-            end
-        end
-
-        if not role_hls[color] then
-            vim.api.nvim_set_hl(data.discord_hl_ns, "Discord" .. color, {
-                link = "Normal"
-            })
-            vim.cmd.highlight("Discord" .. color .. " guifg=#" .. color)
         end
 
         if displayName == vim.NIL then
@@ -74,10 +57,29 @@ local event_handlers = {
         local buffers = _M.get_channel_buffers(guild_id, msgObj.channel_id)
 
         if buffers.output_buf ~= nil then
+            if msgObj.member.roles then
+                local topRole = roles.get_role_in_server(guild_id,
+                    vim.fn.sort(msgObj.member.roles or {}, function(r1, r2)
+                        local role1 = roles.get_role_in_server(guild_id, r1)
+                        local role2 = roles.get_role_in_server(guild_id, r2)
+                        return role2.position - role1.position
+                    end)[1])
+                if topRole then
+                    color = string.format("%.6X", topRole.color)
+                end
+                if not role_hls[color] then
+                    vim.api.nvim_set_hl(data.discord_hl_ns, "Discord" .. color, {
+                        link = "Normal"
+                    })
+                    vim.cmd.highlight("Discord" .. color .. " guifg=#" .. color)
+                    role_hls[color] = true
+                end
+            end
             vim.api.nvim_buf_set_lines(buffers.output_buf, -1, -1, false, lines)
             local line_count = vim.api.nvim_buf_line_count(buffers.output_buf)
 
-            vim.api.nvim_buf_add_highlight(buffers.output_buf, data.discord_hl_ns, "Discord" .. color, line_count - 1, 0, #name_part)
+            vim.api.nvim_buf_add_highlight(buffers.output_buf, data.discord_hl_ns, "Discord" .. color, line_count - 1, 0,
+                #name_part)
             local win_buf = vim.api.nvim_win_get_buf(0)
             if win_buf == buffers.output_buf then
                 vim.api.nvim_win_set_cursor(0, { vim.api.nvim_buf_line_count(buffers.output_buf), 0 })
@@ -240,7 +242,7 @@ _M.parse_discord_uri = function(uri)
             return c.name == channel_ident
         end)[1]
     end
-    return {server, channel, type}
+    return { server, channel, type }
 end
 
 ---@param server_name string | discord.Snowflake
