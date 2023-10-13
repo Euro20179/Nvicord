@@ -71,19 +71,22 @@ The first argument is a message object documented [here](https://discord.com/dev
 
 # Goals
 
-- [x] Ability to login with username/password
+- [ ] Ability to delete messages in output buffer
+- [ ] Ability to send attachments
+- [ ] Ability to reply to messages
 - [ ] Proper documentation
-- [x] Server selection screen
-- [x] Channel selection screen
 - [ ] Sending dms / ability to be in a dm channel
-- [ ] Add highlights for output text
+- [ ] Add highlights for output text (somewhat complete, usernames are highlighted)
 - [ ] Support a plain discord:// uri
     - This would allow running `nvim discord://` which would open a server selection screen, then a channel selection screen
+- [x] Server selection screen
+- [x] Channel selection screen
+- [x] Ability to login with username/password
 - [x] Support server names/ channel names in discord:// uri
 
 # Non-goals
 
 - Stylistic interface
-    - the goal is to create a bare minimum client where certain functions can be overwriten by the user that would give it a better interface
+    - the goal is to create a minimal functional client where certain functions can be overwriten by the user that would give it a better interface
 - Voice chat
      - I do not want to deal with this lol
