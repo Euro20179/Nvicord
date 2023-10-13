@@ -10,15 +10,37 @@ local config = require "discord.config"
 
 local servers = require "discord.resources.servers"
 local channels = require "discord.resources.channels"
+local members = require "discord.resources.members"
+
+local roles = require "discord.resources.roles"
 
 local _M = {}
 
 local data = {}
 
-local role_hls = {
-}
+local role_hls = {}
+
+local message_extmarks = {}
 
 local event_handlers = {
+    MESSAGE_DELETE = function(MESSAGE_DELETE)
+        local msgObj = MESSAGE_DELETE.d
+        local guild_id = msgObj.guild_id
+        if guild_id == nil then
+            return
+        end
+        local buffers = _M.get_channel_buffers(guild_id, msgObj.channel_id)
+
+        local out = buffers.output_buf
+
+        if out == nil then
+            return
+        end
+
+        local msg_extmark = message_extmarks[msgObj.id]
+
+        vim.api.nvim_buf_del_extmark(out, data.discord_msg_ns, msg_extmark[1])
+    end,
     MESSAGE_CREATE = function(MESSAGE_CREATE)
         if MESSAGE_CREATE.t ~= "MESSAGE_CREATE" then
             vim.cmd.echoerr("'did not get a MESSAGE_CREATE json'")
@@ -32,9 +54,7 @@ local event_handlers = {
         end
         local displayName = vim.NIL
 
-        local color = "DiscordNone"
-
-        local roles = require "discord.resources.roles"
+        local color = "000000"
 
         if msgObj.member then
             displayName = msgObj.member.nick
@@ -56,34 +76,42 @@ local event_handlers = {
 
         local buffers = _M.get_channel_buffers(guild_id, msgObj.channel_id)
 
-        if buffers.output_buf ~= nil then
-            if msgObj.member.roles then
-                local topRole = roles.get_role_in_server(guild_id,
-                    vim.fn.sort(msgObj.member.roles or {}, function(r1, r2)
-                        local role1 = roles.get_role_in_server(guild_id, r1)
-                        local role2 = roles.get_role_in_server(guild_id, r2)
-                        return role2.position - role1.position
-                    end)[1])
-                if topRole then
-                    color = string.format("%.6X", topRole.color)
-                end
-                if not role_hls[color] then
-                    vim.api.nvim_set_hl(data.discord_hl_ns, "Discord" .. color, {
-                        link = "Normal"
-                    })
-                    vim.cmd.highlight("Discord" .. color .. " guifg=#" .. color)
-                    role_hls[color] = true
-                end
-            end
-            vim.api.nvim_buf_set_lines(buffers.output_buf, -1, -1, false, lines)
-            local line_count = vim.api.nvim_buf_line_count(buffers.output_buf)
+        if buffers.output_buf == nil then
+            return
+        end
 
-            vim.api.nvim_buf_add_highlight(buffers.output_buf, data.discord_hl_ns, "Discord" .. color, line_count - 1, 0,
-                #name_part)
-            local win_buf = vim.api.nvim_win_get_buf(0)
-            if win_buf == buffers.output_buf then
-                vim.api.nvim_win_set_cursor(0, { vim.api.nvim_buf_line_count(buffers.output_buf), 0 })
-            end
+        if msgObj.member.roles then
+            members._add_member_to_cache(msgObj.member, msgObj.author.id)
+            color = members.get_member_color_as_hex(guild_id, msgObj.author.id)
+        end
+
+        if not role_hls[color] then
+            vim.api.nvim_set_hl(data.discord_hl_ns, "Discord" .. color, {
+                link = "Normal"
+            })
+            vim.cmd.highlight("Discord" .. color .. " guifg=#" .. color)
+            role_hls[color] = true
+        end
+
+        vim.api.nvim_buf_set_lines(buffers.output_buf, -1, -1, false, lines)
+
+        local line_count = vim.api.nvim_buf_line_count(buffers.output_buf)
+
+        local message_extmark = vim.api.nvim_buf_set_extmark(buffers.output_buf, data.discord_msg_ns, line_count - 1, 0,
+            {})
+
+        message_extmarks[msgObj.id] = {
+            message_extmark,
+            #lines
+        }
+
+        vim.api.nvim_buf_add_highlight(buffers.output_buf, data.discord_hl_ns, "Discord" .. color, line_count - 1, 0,
+            #name_part)
+
+        local win_buf = vim.api.nvim_win_get_buf(0)
+
+        if win_buf == buffers.output_buf then
+            vim.api.nvim_win_set_cursor(0, { vim.api.nvim_buf_line_count(buffers.output_buf), 0 })
         end
     end
 }
@@ -160,11 +188,10 @@ _M.setup = function(opts)
     config.user_id = opts.user_id
 
     local discord_hl_ns = vim.api.nvim_create_namespace("discord")
-    DiscordNone = vim.api.nvim_set_hl(discord_hl_ns, "DiscordNone", {
-        fg = "white"
-    })
+    local discord_msg_ns = vim.api.nvim_create_namespace("discord_messages")
 
     data.discord_hl_ns = discord_hl_ns
+    data.discord_msg_ns = discord_msg_ns
 
     vim.api.nvim_create_autocmd("BufEnter", {
         pattern = "discord://*",
