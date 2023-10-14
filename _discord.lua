@@ -392,15 +392,18 @@ end
 _M.open_input_box = function()
     local name = vim.api.nvim_buf_get_name(0)
     if not vim.startswith(name, "discord://") then
-        error("Not currently in a discord:// buffer")
+        vim.notify("Not currently in a discord:// buffer", vim.log.levels.ERROR)
+        return
     end
     local uri_result = _M.parse_discord_uri(name)
     if uri_result == nil then
-        error("Not in an output buffer")
+        vim.notify("Not in an output buffer", vim.log.levels.ERROR)
+        return
     end
     local server, channel, buf_type = _M.unpack_uri_result(uri_result)
     if buf_type ~= "output" then
-        error("Not currently in an output buffer")
+        vim.notify("Not in an output buffer", vim.log.levels.ERROR)
+        return
     end
 
     local input_buf = _M.get_channel_input_buffer(server.id, channel.id)
