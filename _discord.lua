@@ -186,7 +186,7 @@ end
 
 _M.setup = function(opts)
     if not opts.user_id then
-        error("No user id given")
+        vim.notify("No discord user id given", vim.log.levels.ERROR)
         return
     end
     config.token = opts.token
@@ -412,18 +412,17 @@ _M.open_input_box = function()
         input_buf = create_input_buf(server.name, channel.name, channel.id)
     end
 
-    --this split is to make it so that the output win can't scroll below the input float
     vim.cmd.split()
-    vim.api.nvim_win_set_height(0, 10)
-
-    vim.api.nvim_open_win(input_buf, true, {
-        relative = "win",
-        row = 0, col = 0,
-        width = vim.api.nvim_win_get_width(0),
-        height = vim.api.nvim_win_get_height(0),
-        style = "minimal",
-        border = "rounded"
-    })
+    vim.api.nvim_win_set_buf(0, input_buf)
+    --
+    -- vim.api.nvim_open_win(input_buf, true, {
+    --     relative = "win",
+    --     row = vim.api.nvim_win_get_height(0) - 3, col = 0,
+    --     width = vim.api.nvim_win_get_width(0),
+    --     height = 3,
+    --     style = "minimal",
+    --     border = "rounded"
+    -- })
 end
 
 ---@param uri string
