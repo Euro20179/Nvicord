@@ -467,7 +467,7 @@ _M.prompt_login = function()
     return email, password
 end
 
----@return string (the token)
+---@return string | nil (the token) 
 local function login()
     local email, password = _M.prompt_login()
     local login_resp = vim.system({
@@ -485,7 +485,8 @@ local function login()
         "https://discord.com/api/v9/auth/login"
     }):wait()
     if login_resp.code ~= 0 then
-        error("Failed to login, invalid username or password")
+        vim.notify("Failed to login, invalid username or password", vim.log.levels.ERROR)
+        return nil
     end
     local response = vim.json.decode(login_resp.stdout)
     return response.token
@@ -496,7 +497,12 @@ _M.start = function(uri)
     if not data.started then
         if not config.token then
             local token = login()
-            config.token = token
+            if token then
+                config.token = token
+            else
+                vim.notify("Failed to start discord client", vim.log.levels.ERROR)
+                return
+            end
         end
         _M.open_uri(uri or "discord://", {
             output = 0,
@@ -506,7 +512,7 @@ _M.start = function(uri)
         vim.system({ "/home/euro/.config/nvim/lua/discord/main.py", vim.v.servername, config.token })
         data.started = true
     else
-        error("Discord has already started")
+        vim.notify("Discord client already started", vim.log.levels.WARN)
     end
 end
 
