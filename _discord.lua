@@ -113,10 +113,9 @@ local event_handlers = {
         vim.api.nvim_buf_add_highlight(buffers.output_buf, data.discord_hl_ns, "Discord" .. color, line_count - #lines, 0,
             #name_part)
 
-        local win_buf = vim.api.nvim_win_get_buf(0)
-
-        if win_buf == buffers.output_buf then
-            vim.api.nvim_win_set_cursor(0, { vim.api.nvim_buf_line_count(buffers.output_buf), 0 })
+        local output_win = _M.get_channel_output_win("discord://id=" .. guild_id .. "/id=" .. msgObj.channel_id)
+        if output_win then
+            vim.api.nvim_win_set_cursor(output_win, { vim.api.nvim_buf_line_count(buffers.output_buf), 0 })
         end
     end
 }
@@ -335,6 +334,25 @@ local function get_channel_buffer_of_type(server_id, channel_id, buffer_type)
             if tostring(uri_server.id) == tostring(server_id) and tostring(uri_channel.id) == tostring(channel_id) and buf_type == buffer_type then
                 return buf
             end
+        end
+        ::continue::
+    end
+    return nil
+end
+
+---@param uri string Must be a uri without the /output or /input at the end
+---@return number | nil
+_M.get_channel_output_win = function(uri)
+    local server, channel = _M.unpack_uri_result(_M.parse_discord_uri(uri) or {})
+    for _, win in pairs(vim.api.nvim_list_wins()) do
+        local win_buf = vim.api.nvim_win_get_buf(win)
+        local buf_name = vim.api.nvim_buf_get_name(win_buf)
+        if not vim.startswith(buf_name, "discord://") then
+            goto continue
+        end
+        local buf_s, buf_c, buf_type = _M.unpack_uri_result(_M.parse_discord_uri(buf_name) or {})
+        if buf_s == server and buf_c == channel and buf_type == "output" then
+            return win
         end
         ::continue::
     end
