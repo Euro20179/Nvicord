@@ -126,6 +126,26 @@ local function discordSend(command_data)
     _M.send_message({ content = content }, channel_id)
 end
 
+_M.get_focused_server_id = function()
+    local name = vim.api.nvim_buf_get_name(0)
+    if not vim.startswith(name, "discord://") then
+        error("Not focused on a discord:// buffer")
+    end
+
+    local server = _M.unpack_uri_result(_M.parse_discord_uri(name) or {})
+
+    return server and server.id or nil
+end
+
+_M.get_focused_channel_id = function()
+    local name = vim.api.nvim_buf_get_name(0)
+    if not vim.startswith(name, "discord://") then
+        error("Not focused on a discord:// buffer")
+    end
+    local _, channel = _M.unpack_uri_result(_M.parse_discord_uri(name) or {})
+    return channel and channel.id or nil
+end
+
 ---@param resources {id: string, name: string}[]
 ---@param on_select fun(selection: {id: string, name: string}): any
 ---This is a function that generically allows the user to select from a list of resources
