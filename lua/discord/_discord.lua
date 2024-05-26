@@ -442,6 +442,8 @@ local function login()
     return response.token
 end
 
+
+
 ---@param uri string? should be a discord:// uri described at the top of _discord.lua
 _M.start = function(uri)
     if not started then
@@ -459,7 +461,9 @@ _M.start = function(uri)
             input = 0
         })
         vim.api.nvim_create_user_command("DiscordSend", discordSend, { nargs = "+" })
-        vim.system({ "/home/euro/.config/nvim/lua/discord/main.py", vim.v.servername, config.token })
+        --gets the containing filepath for this file
+        local dir = vim.fs.dirname(debug.getinfo(1, "S").source:sub(2))
+        vim.system({dir .. "/main.py", vim.v.servername, config.token })
         started = true
     else
         vim.notify("Discord client already started", vim.log.levels.WARN)
