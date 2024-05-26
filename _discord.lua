@@ -5,6 +5,8 @@
 --type: output | input
 
 ---@alias discord.UriOutputType "output" | "input" | nil
+---
+---@alias buffer integer
 
 local config = require "discord.config"
 
@@ -23,6 +25,26 @@ local role_hls = {}
 local message_extmarks = {}
 
 local event_handlers = {
+    READY = function (READY)
+        vim.notify("You are logged in", vim.log.levels.INFO, {})
+    end,
+    PRESENCE_UPDATE = function (event)
+    end,
+    MESSAGE_REACTION_ADD = function (event)
+    end,
+    VOICE_STATE_UPDATE = function (event)
+    end,
+    GUILD_MEMBER_UPDATE = function (event)
+    end,
+    TYPING_START = function (TYPING_START)
+        local member = members.get_member_in_server(TYPING_START.guild_id, TYPING_START.user_id)
+        if member ~= nil then
+            vim.notify(member.user.global_name .. " has started typing", vim.log.levels.INFO, {})
+        end
+    end,
+    CONVERSATION_SUMMARY_UPDATE = function (CONV_SUMMARY_UPDATE)
+        vim.print(CONV_SUMMARY_UPDATE)
+    end,
     MESSAGE_DELETE = function(MESSAGE_DELETE)
         local msgObj = MESSAGE_DELETE.d
         local guild_id = msgObj.guild_id
@@ -79,6 +101,10 @@ local event_handlers = {
             lines[i] = contentLines[i]
         end
 
+        for i = 1, #msgObj.attachments do
+            lines[#lines + 1] = "[" .. msgObj.attachments[i].filename .. "]" .. "(" .. msgObj.attachments[i].url .. ")"
+        end
+
         local buffers = _M.get_channel_buffers(guild_id, msgObj.channel_id)
 
         if buffers.output_buf == nil then
@@ -124,6 +150,34 @@ local function discordSend(command_data)
     local channel_id = command_data.fargs[1]
     local content = vim.list_slice(command_data.fargs, 2)[1]
     _M.send_message({ content = content }, channel_id)
+end
+
+---@param server_id discord.Snowflake
+---@param channel_id discord.Snowflake
+---@return table
+local function findServerChannelBufPair(server_id, channel_id)
+    local serverName = servers.get_server_by_id(server_id)
+    local channelName = channels.get_channel_in_server_by_id(server_id, channel_id)
+
+    local requiredBufPrefix = "discord://" .. serverName.name .. "/" .. channelName.name
+
+    local chans = vim.iter(vim.api.nvim_list_bufs())
+        :filter(function (buf)
+            local name = vim.api.nvim_buf_get_name(buf)
+            return vim.startswith(name, requiredBufPrefix)
+        end)
+        :totable()
+
+    local inChannel = vim.iter(chans):find(function (b)
+        local name = vim.api.nvim_buf_get_name(b)
+        return vim.endswith(name, '/input')
+    end)
+    local outChannel = vim.iter(chans):find(function (b)
+        local name = vim.api.nvim_buf_get_name(b)
+        return vim.endswith(name, '/output')
+    end)
+
+    return { IN = inChannel, OUT = outChannel }
 end
 
 _M.get_focused_server_id = function()
@@ -179,6 +233,7 @@ _M.handle_discord_event = function(event)
     if event_handlers[event.t] then
         event_handlers[event.t](event)
     else
+        vim.notify("Event not implemented " .. event.t, vim.log.levels.INFO, {})
         -- vim.system({"notify-send", tostring(event.t)})
         -- vim.notify(tostring(event.t) .. " Has not been implemented")
     end
@@ -193,13 +248,61 @@ _M.open_channel = function(server_id)
     else
         servers.select_server(function(server)
             channels.select_channel(server.id, function(channel)
+                print(server.id, channel.id)
                 _M.open_uri("discord://id=" .. server.id .. "/id=" .. channel.id)
             end)
         end)
     end
 end
 
-_M.clear_buf = function(buf)
+
+local function _display_channel(inBuf, outBuf)
+    vim.cmd.tabnew()
+    vim.api.nvim_win_set_buf(0, inBuf)
+    vim.api.nvim_open_win(outBuf, false, {
+        split = 'above',
+        win = 0
+    })
+end
+
+---Opens a new tab with a split, top window is output, bottom window is input
+---
+---if both inBuf AND outBuf are provided
+---this function simply opens a new tab and splits with topsplit being output buf
+---bottom split being input buf
+---@param inBuf buffer
+---@param outBuf buffer
+_M.display_channel = function(inBuf, outBuf)
+    --if both are provided simply open a tab to display the buffers
+    --
+    --this makes it easy to call open_channel and put the result directly into display_channel
+    if inBuf ~= nil and outBuf ~= nil then
+        _display_channel(inBuf, outBuf)
+        return
+    end
+
+    local chans = vim.iter(vim.api.nvim_list_bufs())
+        :filter(vim.api.nvim_buf_is_valid)
+        :map(vim.api.nvim_buf_get_name)
+        :filter(function(name)
+            return vim.startswith(name, "discord://")
+        end)
+        :totable()
+
+    vim.ui.select(chans, {}, function(item)
+        local result = _M.parse_discord_uri(item)
+        if result == nil then
+            return
+        end
+        local server, channel, buf_type = _M.unpack_uri_result(result)
+
+        local bufPair = findServerChannelBufPair(server.id, channel.id)
+
+        _display_channel(bufPair.IN, bufPair.OUT)
+    end)
+end
+
+local function clear_buf (buf)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
 end
 
@@ -298,6 +401,30 @@ _M.parse_discord_uri = function(uri)
     return { server, channel, type }
 end
 
+---Used to bind a key to sending a message from a buffer
+_M.send_message_bind = function ()
+    local bName = vim.api.nvim_buf_get_name(0)
+
+    if not vim.startswith(bName, "discord://") or not vim.endswith(bName, "/input") then
+        vim.notify("You are not in a discord://*/input buffer", vim.log.levels.ERROR, {})
+        return
+    end
+
+    local result = _M.parse_discord_uri(bName)
+
+    if result == nil then
+        vim.notify("Could not parse buffer's discord uri", vim.log.levels.ERROR, {})
+        return
+    end
+
+    local chan = result[2]
+
+    local text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n')
+    _M.send_message({ content = text }, chan.id)
+
+    clear_buf(0)
+end
+
 ---@param server_name string | discord.Snowflake
 ---@param channel_name string
 ---@param channel_id string | discord.Snowflake
@@ -313,17 +440,6 @@ local function create_input_buf(server_name, channel_name, channel_id, replaceBu
     vim.api.nvim_buf_set_name(input_buf,
         "discord://" .. server_name .. "/" .. channel_name .. "/input")
 
-    vim.keymap.set("n", "<leader>s", function()
-        local text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
-        _M.send_message({ content = text }, channel_id)
-        _M.clear_buf(input_buf)
-    end, { buffer = input_buf })
-
-    vim.keymap.set("i", "<c-s>", function()
-        local text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
-        _M.send_message({ content = text }, channel_id)
-        _M.clear_buf(input_buf)
-    end, { buffer = input_buf })
     return input_buf
 end
 
@@ -504,7 +620,7 @@ _M.prompt_login = function()
     return email, password
 end
 
----@return string | nil (the token) 
+---@return string | nil (the token)
 local function login()
     local email, password = _M.prompt_login()
     local login_resp = vim.system({
