@@ -1,5 +1,9 @@
 # Nvicord
 
+[demo](./.github/demo.mp4)
+
+![demo ss](./.github/demo-ss.png)
+
 At this point in time, this is more of a demonstration of an idea than a fully functional client library
 
 However it does have the bare minimum to be able to interact with any channel in any server.
