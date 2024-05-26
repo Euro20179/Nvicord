@@ -14,15 +14,9 @@ local servers = require "discord.resources.servers"
 local channels = require "discord.resources.channels"
 local members = require "discord.resources.members"
 
-local roles = require "discord.resources.roles"
-
 local _M = {}
 
-local data = {}
-
-local role_hls = {}
-
-local message_extmarks = {}
+local started = false
 
 local event_handlers = {
     READY = function (READY)
@@ -45,105 +39,6 @@ local event_handlers = {
     CONVERSATION_SUMMARY_UPDATE = function (CONV_SUMMARY_UPDATE)
         vim.print(CONV_SUMMARY_UPDATE)
     end,
-    MESSAGE_DELETE = function(MESSAGE_DELETE)
-        local msgObj = MESSAGE_DELETE.d
-        local guild_id = msgObj.guild_id
-        if guild_id == nil then
-            return
-        end
-        local buffers = _M.get_channel_buffers(guild_id, msgObj.channel_id)
-
-        local out = buffers.output_buf
-
-        if out == nil then
-            return
-        end
-
-        local msg_extmark = message_extmarks[msgObj.id]
-
-        local extmark_pos = vim.api.nvim_buf_get_extmark_by_id(out, data.discord_msg_ns, msg_extmark[1], {})
-
-        vim.api.nvim_buf_set_extmark(out, data.discord_hl_ns, extmark_pos[1], 0, {
-            end_row = extmark_pos[1] + msg_extmark[2],
-            hl_group = "DiscordStrike"
-        })
-    end,
-    MESSAGE_CREATE = function(MESSAGE_CREATE)
-        if MESSAGE_CREATE.t ~= "MESSAGE_CREATE" then
-            vim.cmd.echoerr("'did not get a MESSAGE_CREATE json'")
-            return
-        end
-        local msgObj = MESSAGE_CREATE.d
-        local guild_id = msgObj.guild_id
-        if guild_id == nil and msgObj.author.id ~= config.user_id then
-            _M.dm_notify(msgObj)
-            return
-        end
-        local displayName = vim.NIL
-
-        local color = "000000"
-
-        if msgObj.member then
-            displayName = msgObj.member.nick
-        end
-
-        if displayName == vim.NIL then
-            displayName = msgObj.author.username
-        end
-        if displayName == vim.NIL then
-            displayName = "<UNKNOWN>"
-        end
-
-        local contentLines = vim.split(msgObj.content, "\n")
-        local name_part = "@" .. displayName
-        local lines = { name_part .. ": " .. contentLines[1] }
-        for i = 2, #contentLines do
-            lines[i] = contentLines[i]
-        end
-
-        for i = 1, #msgObj.attachments do
-            lines[#lines + 1] = "[" .. msgObj.attachments[i].filename .. "]" .. "(" .. msgObj.attachments[i].url .. ")"
-        end
-
-        local buffers = _M.get_channel_buffers(guild_id, msgObj.channel_id)
-
-        if buffers.output_buf == nil then
-            return
-        end
-
-        if msgObj.member.roles then
-            members._add_member_to_cache(msgObj.member, msgObj.author.id)
-            color = members.get_member_color_as_hex(guild_id, msgObj.author.id)
-        end
-
-        if not role_hls[color] then
-            vim.api.nvim_set_hl(data.discord_hl_ns, "Discord" .. color, {
-                link = "Normal"
-            })
-            vim.cmd.highlight("Discord" .. color .. " guifg=#" .. color)
-            role_hls[color] = true
-        end
-
-        vim.api.nvim_buf_set_lines(buffers.output_buf, -1, -1, false, lines)
-
-        local line_count = vim.api.nvim_buf_line_count(buffers.output_buf)
-
-        local message_extmark = vim.api.nvim_buf_set_extmark(buffers.output_buf, data.discord_msg_ns, line_count - 1, 0,
-            {})
-
-        message_extmarks[msgObj.id] = {
-            message_extmark,
-            #lines
-        }
-
-        vim.api.nvim_buf_add_highlight(buffers.output_buf, data.discord_hl_ns, "Discord" .. color, line_count - #lines, 0,
-            #name_part)
-
-        local output_win = _M.get_channel_output_win("discord://id=" .. guild_id .. "/id=" .. msgObj.channel_id)
-        if output_win then
-            vim.api.nvim_win_set_cursor(output_win, { vim.api.nvim_buf_line_count(buffers.output_buf), 0 })
-        end
-    end
 }
 
 local function discordSend(command_data)
@@ -313,26 +208,6 @@ _M.setup = function(opts)
     end
     config.token = opts.token
     config.user_id = opts.user_id
-
-    local discord_hl_ns = vim.api.nvim_create_namespace("discord")
-    local discord_msg_ns = vim.api.nvim_create_namespace("discord_messages")
-
-    data.discord_hl_ns = discord_hl_ns
-    data.discord_msg_ns = discord_msg_ns
-
-    vim.cmd.highlight("DiscordStrike cterm=strikethrough gui=strikethrough")
-
-    vim.api.nvim_create_autocmd("BufEnter", {
-        pattern = "discord://*",
-        callback = function()
-            local name = vim.api.nvim_buf_get_name(0)
-            if not data.started then
-                _M.start(name)
-            else
-                _M.open_uri(name)
-            end
-        end
-    })
 end
 
 _M.send_message = function(messageJson, channel_id)
@@ -647,7 +522,7 @@ end
 
 ---@param uri string? should be a discord:// uri described at the top of _discord.lua
 _M.start = function(uri)
-    if not data.started then
+    if not started then
         if not config.token then
             local token = login()
             if token then
@@ -663,7 +538,7 @@ _M.start = function(uri)
         })
         vim.api.nvim_create_user_command("DiscordSend", discordSend, { nargs = "+" })
         vim.system({ "/home/euro/.config/nvim/lua/discord/main.py", vim.v.servername, config.token })
-        data.started = true
+        started = true
     else
         vim.notify("Discord client already started", vim.log.levels.WARN)
     end

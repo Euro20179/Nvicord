@@ -4,6 +4,7 @@ import time
 import threading
 import neovim
 import sys
+import os
 from websockets.exceptions import ConnectionClosedError
 from websockets.sync.client import connect
 from websockets.sync.connection import Connection
@@ -43,12 +44,12 @@ nvim.api.create_user_command("DiscordNotify", 'lua vim.notify("test")', {})
 
 def handleDiscordWebSocketMessages(ws: Connection):
     global s
-    nvim.exec_lua("discord = require'discord'")
+    nvim.exec_lua("discord = require'discord.events'")
     while True:
         msg = json.loads(ws.recv())
         if msg["s"]:
             s = msg["s"]
-        nvim.lua.discord.handle_discord_event(msg)
+        nvim.lua.discord._handle_event(msg)
 
 def main():
     global ws
