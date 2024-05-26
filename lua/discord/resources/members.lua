@@ -49,7 +49,7 @@ end
 _M.get_member_color_as_hex = function(guild_id, user_id)
     local member = _M.get_member_in_server(guild_id, user_id)
     if not member then
-        return "#000000"
+        return "000000"
     end
     local topRole = roles.get_role_in_server(guild_id,
         vim.fn.sort(member.roles or {}, function(r1, r2)
@@ -61,7 +61,7 @@ _M.get_member_color_as_hex = function(guild_id, user_id)
         local color = string.format("%.6X", topRole.color)
         return color
     end
-    return "#000000"
+    return "000000"
 end
 
 return _M
